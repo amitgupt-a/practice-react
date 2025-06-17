@@ -1,17 +1,36 @@
-import express from 'express';
-import cors from 'cors';
+import { serve } from "bun";
+import { OpenAPIBackend } from "openapi-backend";
+import { getTime } from "./handlers/time";
 
-const app = express();
-app.use(cors());
-
-app.get('/api/time', (req, res) => {
-  res.json({
-    message: `Hello world, time is ${new Date().toISOString()}`
-  });
+const api = new OpenAPIBackend({
+  definition: "./openapi.yaml",
+  handlers: {
+    getTime,
+    notFound: async () => ({ statusCode: 404, body: "Not Found" }),
+  },
 });
 
-app.listen(3001, () => {
-  console.log('Backend running on http://localhost:3001');
+await api.init();
+
+console.log("Initializing server...");
+
+serve({
+  port: 3001,
+  fetch: async (req) => {
+    console.log("Received request:", req.method, req.url); 
+    const url = new URL(req.url);
+    const hasBody = req.method !== "GET" && req.method !== "HEAD";
+
+    const request = {
+      method: req.method,
+      path: url.pathname,
+      query: Object.fromEntries(url.searchParams.entries()),
+      headers: Object.fromEntries(req.headers),
+      body: hasBody ? await req.text() : undefined,
+    };
+
+    return api.handleRequest(request, req);
+
+  },
 });
-
-
+  

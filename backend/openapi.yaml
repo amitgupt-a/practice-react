@@ -6,6 +6,7 @@ paths:
   /api/time:
     get:
       summary: Get current time
+      operationId: getTime
       responses:
         '200':
           description: Success
